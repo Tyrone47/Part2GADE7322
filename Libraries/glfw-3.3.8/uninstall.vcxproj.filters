@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\kingt\OneDrive\Documents\Vulkan\Libraries for opengl\glfw-3.3.8\CMakeFiles\6e5d3a39386ad9e59fe67555e0c1da69\uninstall.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\kingt\OneDrive\Documents\Vulkan\Libraries for opengl\glfw-3.3.8\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\kingt\OneDrive\Documents\Vulkan\Libraries for opengl\glfw-3.3.8\CMakeFiles\uninstall" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{08E4C2B7-2DF4-3A1B-84DB-FE2578FA7D1C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

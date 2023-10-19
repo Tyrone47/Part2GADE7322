@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\kingt\OneDrive\Documents\Vulkan\Libraries for opengl\glfw-3.3.8\CMakeFiles\1637bca40ec51cc45aadfbe6e631a6f6\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{08E4C2B7-2DF4-3A1B-84DB-FE2578FA7D1C}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
