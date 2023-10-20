@@ -1961,19 +1961,7 @@ int main()
 
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
-
-    
-   
-   
-    
-   
-    
-
-
-
-
-
-    
+ 
     while (!glfwWindowShouldClose(window))
     {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
