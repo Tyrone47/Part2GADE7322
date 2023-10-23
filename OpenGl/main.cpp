@@ -1891,6 +1891,7 @@ int main()
         chessborder++;
         index_border++;
     }
+    //uhmmmmmm
 
     GLfloat vertices3D[] =
     {
