@@ -1709,7 +1709,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width, height, nrChannels;
-    unsigned char* data = stbi_load("res/images/pexels-gdtography-911738.jpg", &width, &height,
+    unsigned char* data = stbi_load("res/images/Wood.jpg", &width, &height,
         &nrChannels, 0);
     if (data)
     {
@@ -1732,7 +1732,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width1, height1, nrChannels1;
-    unsigned char* data1 = stbi_load("res/images/pexels-lukas-1420710.jpg", &width1, &height1,
+    unsigned char* data1 = stbi_load("res/images/tiles.jpg", &width1, &height1,
         &nrChannels1, 0);
     if (data1)
     {
@@ -1755,7 +1755,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width2, height2, nrChannels2;
-    unsigned char* data2 = stbi_load("res/images/3113406.jpg", &width2, &height2,
+    unsigned char* data2 = stbi_load("res/images/BlackTile.jpg", &width2, &height2,
         &nrChannels2, 0);
     if (data2)
     {
@@ -1961,19 +1961,7 @@ int main()
 
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
-
-    
-   
-   
-    
-   
-    
-
-
-
-
-
-    
+ 
     while (!glfwWindowShouldClose(window))
     {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
