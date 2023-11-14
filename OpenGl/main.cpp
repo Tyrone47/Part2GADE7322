@@ -27,23 +27,23 @@
 #include "TextRenderer.h"
 
 // Window dimensions
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void processInput(GLFWwindow* window);
-
+void moving();
 
 const GLuint WIDTH = 800, HEIGHT = 600;
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraforward = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-bool move_mouse = true;
-
-bool keys_press[1024];
-
-
+bool Using_mouse = true;
 
 GLuint shaderProgram;
 GLuint shaderProgramtexture;
+GLuint shaderProgramlighting;
+GLuint shaderProgramlightingcube;
 GLuint shaderProgrampawnpiece;
 GLuint shaderProgramrookpiece;
 GLuint shaderProgramkingpiece;
@@ -52,9 +52,15 @@ GLuint shaderProgrambishoppiece;
 GLuint shaderProgramknightpiece;
 
 
-//glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-//glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-//glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+bool ActiveMouse = true;
+
+bool keys[1024];
+float yaw = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+float pitch = 0.0f;
+float lastXpos = 800.0f / 2.0;
+float lastYpos = 600.0 / 2.0;
+float fov = 45.0f;
 
 glm::vec3 cameraknightpiece = glm::vec3(-0.3f, 0.0f, -3.0f);
 glm::vec3 cameraknightheightpiece = glm::vec3(-0.3f, 0.12f, -3.0f);
@@ -80,9 +86,6 @@ glm::vec3 camerapawnpiece = glm::vec3(0.5f, 0.0f, -3.0f);
 glm::vec3 camerapawnheightpiece = glm::vec3(0.5f, 0.14f, -3.0f);
 glm::vec3 camerapawntoppiece = glm::vec3(0.5f, 0.14f, -3.0f);
 
-bool Mouse = true;
-
-
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 int frame_counter = 0;
@@ -90,13 +93,6 @@ float elapsed_time = 0.0f;
 int fps = 0;
 bool display_fps = true;
 GLuint VBO[86], VAO[86];
-
-
-
-
-
-
-
 
 const GLchar* vertexShaderSourcechess = "#version 330 core\n"
 "layout (location = 0) in vec3 position;\n"
@@ -116,7 +112,141 @@ const GLchar* vertexShaderSourcechess = "#version 330 core\n"
 "}\0";
 
 // Shaders
-
+const GLchar* vertexShaderSourcelighting = "#version 330 core\n"
+"layout (location = 0) in vec3 aPos;\n"
+"layout (location = 1) in vec3 color;\n"
+"layout (location = 2) in vec2 atex;\n"
+"uniform mat4 VP;\n"
+"uniform mat4 model;\n"
+"uniform mat4 view;\n"
+"uniform vec3 aNormal;\n"
+"uniform mat4 projection;\n"
+"out vec3 Normal;\n"
+"out vec2 TexCoords;\n"
+"out vec3 FragPos;\n"
+"void main()\n"
+"{\n"
+"FragPos = vec3(model * vec4(aPos, 1.0));\n"
+"Normal = mat3(transpose(inverse(model))) * aNormal;\n"
+"TexCoords = atex;\n"
+"gl_Position = projection * view * vec4(FragPos, 1.0);\n"
+"}\0";
+const GLchar* vertexShaderSourcecubelight = "#version 330 core\n"
+"layout (location = 0) in vec3 aPos;\n"
+"uniform mat4 VP;\n"
+"uniform mat4 model;\n"
+"uniform mat4 view;\n"
+"uniform mat4 projection;\n"
+"void main()\n"
+"{\n"
+"gl_Position = projection * view * model * vec4(aPos, 1.0);\n"
+"}\0";
+const GLchar* fragmentShaderSourcecombinelight = "#version 330 core\n"
+"#define NUMBER_OF_POINT_LIGHTS 1\n"
+"out vec4 color;\n"
+"struct Material {\n"
+"sampler2D diffuse;\n"
+"sampler2D specular;\n"
+"float shininess;\n"
+"};\n"
+"struct DirLight {\n"
+"vec3 direction;\n"
+"vec3 ambient;\n"
+"vec3 diffuse;\n"
+"vec3 specular;\n"
+"};\n"
+"struct PointLight {\n"
+"vec3 position;\n"
+"float constant;\n"
+"float linear;\n"
+"float quadratic;\n"
+"vec3 ambient;\n"
+"vec3 diffuse;\n"
+"vec3 specular;\n"
+"};\n"
+"struct SpotLight {\n"
+"vec3 position;\n"
+"vec3 direction;\n"
+"float cutOff;\n"
+"float outerCutOff;\n"
+"float constant;\n"
+"float linear;\n"
+"float quadratic;\n"
+"vec3 ambient;\n"
+"vec3 diffuse;\n"
+"vec3 specular;\n"
+"};\n"
+"in vec3 Normal;\n"
+"in vec3 FragPos;\n"
+"in vec2 TexCoords;\n"
+"uniform vec3 viewPos;\n"
+"uniform Material material;\n"
+"uniform DirLight dirLight;\n"
+"uniform PointLight pointLights[NUMBER_OF_POINT_LIGHTS];\n"
+"uniform SpotLight spotLight;\n"
+"vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);\n"
+"vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);\n"
+"vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);\n"
+"void main()\n"
+"{\n"
+"vec3 norm = normalize(Normal);\n"
+"vec3 viewDir = normalize(viewPos - FragPos);\n"
+"vec3 result = CalcDirLight( dirLight, norm, viewDir );\n"
+"for ( int i = 0; i < NUMBER_OF_POINT_LIGHTS; i++ ){\n"
+"result += CalcPointLight( pointLights[i], norm, FragPos, viewDir );\n"
+"}\n"
+"result += CalcSpotLight( spotLight, norm, FragPos, viewDir );\n"
+"color = vec4(result, 1.0);\n"
+"}\n"
+"vec3 CalcDirLight( DirLight light, vec3 normal, vec3 viewDir ){\n"
+"vec3 lightDir = normalize( -light.direction );\n"
+"float diff = max( dot( normal, lightDir ), 0.0 );\n"
+"vec3 reflectDir = reflect( -lightDir, normal );\n"
+"float spec = pow( max( dot( viewDir, reflectDir ), 0.0 ), material.shininess );\n"
+"vec3 ambient = light.ambient * vec3( texture( material.diffuse, TexCoords ) );\n"
+"vec3 diffuse = light.diffuse * diff * vec3( texture( material.diffuse, TexCoords ) );\n"
+"vec3 specular = light.specular * spec * vec3( texture( material.specular, TexCoords ) );\n"
+"return ( ambient + diffuse + specular );\n"
+"}\n"
+"vec3 CalcPointLight( PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir ){\n"
+"vec3 lightDir = normalize( light.position - fragPos );\n"
+"float diff = max( dot( normal, lightDir ), 0.0 );\n"
+"vec3 reflectDir = reflect( -lightDir, normal );\n"
+"float spec = pow( max( dot( viewDir, reflectDir ), 0.0 ), material.shininess );\n"
+"float distance = length( light.position - fragPos );\n"
+"float attenuation = 1.0f / ( light.constant + light.linear * distance + light.quadratic * ( distance * distance ) );\n"
+"vec3 ambient = light.ambient * vec3( texture( material.diffuse, TexCoords ) );\n"
+"vec3 diffuse = light.diffuse * diff * vec3( texture( material.diffuse, TexCoords ) );\n"
+"vec3 specular = light.specular * spec * vec3( texture( material.specular, TexCoords ) );\n"
+"ambient *= attenuation;\n"
+"diffuse *= attenuation;\n"
+"specular *= attenuation;\n"
+"return ( ambient + diffuse + specular );\n"
+"}\n"
+"vec3 CalcSpotLight( SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir ){\n"
+"vec3 lightDir = normalize( light.position - fragPos );\n"
+"float diff = max( dot( normal, lightDir ), 0.0 );\n"
+"vec3 reflectDir = reflect( -lightDir, normal );\n"
+"float spec = pow( max( dot( viewDir, reflectDir ), 0.0 ), material.shininess );\n"
+"float distance = length( light.position - fragPos );\n"
+"float attenuation = 1.0f / ( light.constant + light.linear * distance + light.quadratic * ( distance * distance ) );\n"
+"float theta = dot( lightDir, normalize( -light.direction ) );\n"
+"float epsilon = light.cutOff - light.outerCutOff;\n"
+"float intensity = clamp( ( theta - light.outerCutOff ) / epsilon, 0.0, 1.0 );\n"
+"vec3 ambient = light.ambient * vec3( texture( material.diffuse, TexCoords ) );\n"
+"vec3 diffuse = light.diffuse * diff * vec3( texture( material.diffuse, TexCoords ) );\n"
+"vec3 specular = light.specular * spec * vec3( texture( material.specular, TexCoords ) );\n"
+"ambient *= attenuation * intensity;\n"
+"diffuse *= attenuation * intensity;\n"
+"specular *= attenuation * intensity;\n"
+"return ( ambient + diffuse + specular );\n"
+"}\n\0";
+const GLchar* fragmentShaderSourcecubelight = "#version 330 core\n"
+"out vec4 color;\n"
+"void main()\n"
+"{\n"
+"color = vec4(1.0);\n"
+"}\n\0";
 const GLchar* fragmentShaderSourcetexturechess = "#version 330 core\n"
 "out vec4 color;\n"
 "in vec4 ourcolor;\n"
@@ -181,7 +311,6 @@ const GLchar* fragmentShaderSourceknightchesspiece = "#version 330 core\n"
 "{\n"
 "color = texture(mytexture, texcoord);\n"
 "}\n\0";
-
 void generate1()
 {
 
@@ -2913,7 +3042,6 @@ void whitecylinderknight()
     whitecylinderheightknight();
 
 }
-
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
@@ -2947,7 +3075,7 @@ int main()
     glfwMakeContextCurrent(window);
 
     glfwSetKeyCallback(window, KeyCallback);
-
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     // GLFW Options
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -2977,7 +3105,12 @@ int main()
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSourcechess, NULL);
     glCompileShader(vertexShader);
-
+    GLuint vertexShaderlight = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShaderlight, 1, &vertexShaderSourcelighting, NULL);
+    glCompileShader(vertexShaderlight);
+    GLuint vertexShadercube = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShadercube, 1, &vertexShaderSourcecubelight, NULL);
+    glCompileShader(vertexShadercube);
 
     // Check for compile time errors
     GLint success;
@@ -2991,7 +3124,7 @@ int main()
     }
 
     // Fragment shader
-
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     GLuint fragmentShadertexture = glCreateShader(GL_FRAGMENT_SHADER);
     GLuint fragmentShaderpawntexture = glCreateShader(GL_FRAGMENT_SHADER);
     GLuint fragmentShaderrooktexture = glCreateShader(GL_FRAGMENT_SHADER);
@@ -2999,9 +3132,12 @@ int main()
     GLuint fragmentShaderqueentexture = glCreateShader(GL_FRAGMENT_SHADER);
     GLuint fragmentShaderbishoptexture = glCreateShader(GL_FRAGMENT_SHADER);
     GLuint fragmentShaderknighttexture = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint fragmentShaderlighting = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint fragmentShadercubelight = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShadertexture, 1, &fragmentShaderSourcetexturechess, NULL);
     glCompileShader(fragmentShadertexture);
-
+    //glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    //glCompileShader(fragmentShader);
     glShaderSource(fragmentShaderpawntexture, 1, &fragmentShaderSourcepawnchesspiece, NULL);
     glCompileShader(fragmentShaderpawntexture);
     glShaderSource(fragmentShaderrooktexture, 1, &fragmentShaderSourcerookchesspiece, NULL);
@@ -3014,18 +3150,35 @@ int main()
     glCompileShader(fragmentShaderbishoptexture);
     glShaderSource(fragmentShaderknighttexture, 1, &fragmentShaderSourceknightchesspiece, NULL);
     glCompileShader(fragmentShaderknighttexture);
+    glShaderSource(fragmentShaderlighting, 1, &fragmentShaderSourcecombinelight, NULL);
+    glCompileShader(fragmentShaderlighting);
+    glShaderSource(fragmentShadercubelight, 1, &fragmentShaderSourcecubelight, NULL);
+    glCompileShader(fragmentShadercubelight);
 
     // Check for compile time errors
-    glGetShaderiv(fragmentShadertexture, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(fragmentShaderlighting, GL_COMPILE_STATUS, &success);
 
     if (!success)
     {
-        glGetShaderInfoLog(fragmentShadertexture, 512, NULL, infoLog);
+        glGetShaderInfoLog(fragmentShaderlighting, 512, NULL, infoLog);
         std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
     }
 
+    // Link shaders
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
 
+    shaderProgramlighting = glCreateProgram();
+    glAttachShader(shaderProgramlighting, vertexShaderlight);
+    glAttachShader(shaderProgramlighting, fragmentShaderlighting);
+    glLinkProgram(shaderProgramlighting);
 
+    shaderProgramlightingcube = glCreateProgram();
+    glAttachShader(shaderProgramlightingcube, vertexShadercube);
+    glAttachShader(shaderProgramlightingcube, fragmentShadercubelight);
+    glLinkProgram(shaderProgramlightingcube);
 
     shaderProgramtexture = glCreateProgram();
     glAttachShader(shaderProgramtexture, vertexShader);
@@ -3062,8 +3215,6 @@ int main()
     glAttachShader(shaderProgramknightpiece, fragmentShaderknighttexture);
     glLinkProgram(shaderProgramknightpiece);
 
-
-
     // Check for linking errors
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
 
@@ -3074,8 +3225,14 @@ int main()
     }
 
     glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
     glDeleteShader(fragmentShadertexture);
-
+    glDeleteShader(fragmentShaderpawntexture);
+    glDeleteShader(fragmentShaderrooktexture);
+    glDeleteShader(fragmentShaderkingtexture);
+    glDeleteShader(fragmentShaderqueentexture);
+    glDeleteShader(fragmentShaderbishoptexture);
+    glDeleteShader(fragmentShaderknighttexture);
 
 
     unsigned int textureblock1, textureblock2, textureblock3, textureblock4, textureblock5;
@@ -3087,9 +3244,9 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture using stbi_image
+    // load and generate the texture
     int width, height, nrChannels;
-    unsigned char* data = stbi_load("res/images/Wood.jpg", &width, &height,
+    unsigned char* data = stbi_load("res/images/pexels-gdtography-911738.jpg", &width, &height,
         &nrChannels, 0);
     if (data)
     {
@@ -3110,9 +3267,9 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture using stbi_image
+    // load and generate the texture
     int width1, height1, nrChannels1;
-    unsigned char* data1 = stbi_load("res/images/tiles.jpg", &width1, &height1,
+    unsigned char* data1 = stbi_load("res/images/pexels-lukas-1420710.jpg", &width1, &height1,
         &nrChannels1, 0);
     if (data1)
     {
@@ -3133,9 +3290,9 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture using stbi_image
+    // load and generate the texture
     int width2, height2, nrChannels2;
-    unsigned char* data2 = stbi_load("res/images/BlackTile.jpg", &width2, &height2,
+    unsigned char* data2 = stbi_load("res/images/3113406.jpg", &width2, &height2,
         &nrChannels2, 0);
     if (data2)
     {
@@ -3156,7 +3313,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture using stbi_image
+    // load and generate the texture
     int width3, height3, nrChannels3;
     unsigned char* data3 = stbi_load("res/images/brown-wall-texture_1048-4780.jpg", &width3, &height3,
         &nrChannels3, 0);
@@ -3179,7 +3336,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture using stbi_image
+    // load and generate the texture
     int width4, height4, nrChannels4;
     unsigned char* data4 = stbi_load("res/images/do-2764539_640.jpg", &width4, &height4,
         &nrChannels4, 0);
@@ -3196,12 +3353,8 @@ int main()
     stbi_image_free(data4);
 
 
-
-
     //chessboard 
     generate1();
-
-
     float xcoordinates = -0.35f;
     float xcoordinates2 = -0.3f;
     float ycoordinates = 0.5f;
@@ -3388,29 +3541,266 @@ int main()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
 
+
+
+    //CALLING THE LIGHT SHADERS
+    Shader lightingShaderobjects("res/shaders/lightingobjects.vs", "res/shaders/lightingobjects.frag");
+    Shader cubeshaderobject("res/shaders/lightingcube.vs", "res/shaders/lightingcube.frag");
+
+    Shader modelShader("res/shaders/models.vs", "res/shaders/models.frag");
+
+    //LOADING THE MODELS
+    Model MyModels("res/models2/chessss.obj");
+
+
+    float verticescubelight[] = {
+        -0.5f, -0.5f, -0.5f,      0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,     1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,      1.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,     1.0f,  1.0f,
+        -0.5f,  0.5f, -0.5f,     0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,     0.0f,  0.0f,
+
+        -0.5f, -0.5f,  0.5f,     0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,      1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,    1.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,
+
+        -0.5f,  0.5f,  0.5f,   1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,   1.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,    0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,    1.0f,  0.0f,
+
+         0.5f,  0.5f,  0.5f,    1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,      1.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,      0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,      0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,     0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,      1.0f,  0.0f,
+
+        -0.5f, -0.5f, -0.5f,   0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,   1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,   1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,   0.0f,  1.0f,
+
+        -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,   1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,   1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,   0.0f,  1.0f
+    };
+
+    glm::vec3 firstcubePositions[] = {
+        glm::vec3(-5.0f, 0.0f, 3.0f),//dir -left
+        glm::vec3(5.0f, 0.0f, 3.0f),//point - right
+        glm::vec3(0.0f, 0.0f, 0.0f),//spot - middle
+
+    };
+    glm::vec3 secondcubePosition[] = {
+        glm::vec3(-5.0f, 0.0f, 4.0f),//dir -left
+        glm::vec3(5.0f, 5.0f, 6.0f),//point - right
+        glm::vec3(0.0f, 4.0f, 1.0f),//spot - middle
+
+    };
+    glm::vec3 thirdcubePosition[] = {
+        glm::vec3(0.5f, 1.5f, -1.5f),//point - right
+        glm::vec3(0.0f, 1.0f, 1.0f),//spot - middle
+
+    };
+
+    GLuint VBOcube, VAOcube;
+    glGenBuffers(1, &VBOcube);
+    glGenVertexArrays(1, &VAOcube);
+    glBindVertexArray(VAOcube);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBOcube);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verticescubelight), verticescubelight, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+
+    glUseProgram(shaderProgramlighting);
+
+    int diffusemap = glGetUniformLocation(shaderProgramlighting, "material.diffuse");
+    glUniform1i(diffusemap, 0);
+    int specularmap = glGetUniformLocation(shaderProgramlighting, "material.specular");
+    glUniform1i(specularmap, 1);
+
+
+
+
+
+
+
+
+
+    ///Height map
+
     while (!glfwWindowShouldClose(window))
     {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
         glfwPollEvents();
-
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
         //process input
-        //moving();
+        moving();
 
 
         // Render
         // Clear the colorbuffer
         //glClearColor specifies the color on the screen
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClear(GL_COLOR_BUFFER_BIT);
+
+        elapsed_time += deltaTime;
+        ++frame_counter;
+
+        if (elapsed_time >= 1) {
+
+            fps = (int)(((float)frame_counter * 60.0f) / (elapsed_time * 100));
+
+            frame_counter = 0;
+            elapsed_time = 0.0f;
+        }
 
 
-        glUseProgram(shaderProgramtexture);
 
 
-        for (int block = 0; block < 81; block++)
+        //Generate Terrain
+
+
+
+        //activating the light shader for the models
+        lightingShaderobjects.use();
+
+        glm::vec3 lightPosition(1.2f, 1.0f, 2.0f);
+        glm::vec4 lightingColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+
+        int ColorLocationobjectviewfirst = glGetUniformLocation(lightingShaderobjects.ID, "viewPos");
+        glUniform3f(ColorLocationobjectviewfirst, 0.0f, 0.0f, 0.0f);
+        int shinymaterial = glGetUniformLocation(lightingShaderobjects.ID, "material.shininess");
+        glUniform1f(shinymaterial, 32.0f);
+        //directional light
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "dirLight.direction"), 5.0f, 5.0f, 6.0f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "dirLight.ambient"), 0.5f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "dirLight.diffuse"), 0.5f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "dirLight.specular"), 1.0f, 1.0f, 1.0f);
+        //point light 2m behind, by the left side
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].position"), -5.0f, 0.0f, 4.0f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].ambient"), 2.8f, 2.8f, 2.8f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].diffuse"), 0.5f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].specular"), 1.0f, 1.0f, 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "pointLights[0].quadratic"), 0.032f);
+        //spot light by the model
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.position"), 0.0f, 4.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.direction"), 0.0f, -0.8f, -1.0f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.ambient"), 7.8f, 7.8f, 7.8f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.quadratic"), 0.032f);
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
+        glUniform1f(glGetUniformLocation(lightingShaderobjects.ID, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
+
+        //placing the models
+        glm::mat4 projection = glm::perspective(glm::radians(camera.GetZoom()), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+        lightingShaderobjects.setMat4("projection", projection);
+        lightingShaderobjects.setMat4("view", view);
+
+        // render the loaded model
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, 1.5f, -3.0f));
+        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+        lightingShaderobjects.setMat4("model", model);
+        MyModels.Draw(lightingShaderobjects);
+
+
+
+
+        //activating the shader for light cube positions
+        cubeshaderobject.use();
+        glm::mat4 model3 = glm::mat4(1.0f);
+        glm::mat4 view3 = glm::mat4(1.0f);
+        glm::mat4 projection3 = glm::mat4(1.0f);
+        model3 = glm::rotate(model3, glm::radians(-55.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+        model3 = glm::translate(model3, glm::vec3(5.0f, 5.0f, 6.0f));//x is left/right, y is forward/back, z is up/down
+        model3 = glm::scale(model3, glm::vec3(0.2f));
+        view3 = camera.GetViewMatrix();
+        projection3 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+
+        unsigned int modelLoc3 = glGetUniformLocation(cubeshaderobject.ID, "model");
+        unsigned int viewLoc3 = glGetUniformLocation(cubeshaderobject.ID, "view");
+        unsigned int theprojection3 = glGetUniformLocation(cubeshaderobject.ID, "projection");
+
+        glUniformMatrix4fv(modelLoc3, 1, GL_FALSE, glm::value_ptr(model3));
+        glUniformMatrix4fv(viewLoc3, 1, GL_FALSE, &view3[0][0]);
+        glUniformMatrix4fv(theprojection3, 1, GL_FALSE, &projection3[0][0]);
+
+        glBindVertexArray(VAOcube);
+
+        for (GLuint i = 0; i < 4; i++)
         {
-            if (block == 0 || block == 2 || block == 4 || block == 6 || block == 8 || block == 10 || block == 12 || block == 14 || block == 16 || block == 18 || block == 20)
+            model3 = glm::mat4();
+            model3 = glm::translate(model3, secondcubePosition[i]);
+            model3 = glm::scale(model3, glm::vec3(0.2f));
+            glUniformMatrix4fv(modelLoc3, 1, GL_FALSE, glm::value_ptr(model3));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        //activating the light shader
+        glUseProgram(shaderProgramlighting);
+        float x = -1.0f;
+        float y = -1.0f;
+        float z = -1.0f;
+        int normal = glGetUniformLocation(shaderProgramlighting, "aNormal");
+        while (x < 1.0f && y < 1.0f && z < 1.0f)
+        {
+            x += glfwGetTime() * deltaTime;
+            y += glfwGetTime() * deltaTime;
+            z += glfwGetTime() * deltaTime;
+
+            glUniform3f(normal, x, y, z);
+        }
+        int ColorLocationobjectviewsecond = glGetUniformLocation(shaderProgramlighting, "viewPos");
+        glUniform3f(ColorLocationobjectviewsecond, 0.0f, 0.0f, 0.0f);
+        int shinymaterial1 = glGetUniformLocation(shaderProgramlighting, "material.shininess");
+        glUniform1f(shinymaterial1, 32.0f);
+        //point light 
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].position"), 0.5f, 1.5f, -1.5f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].ambient"), 0.8f, 0.8f, 0.8f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].diffuse"), 0.5f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].specular"), 1.0f, 1.0f, 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "pointLights[0].quadratic"), 0.032f);
+        //spot light on the chessboard
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "spotLight.position"), 0.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "spotLight.direction"), 0.0f, -1.0f, -1.0f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "spotLight.ambient"), 0.5f, 0.5f, 0.5f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(shaderProgramlighting, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "spotLight.constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "spotLight.linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "spotLight.quadratic"), 0.032f);
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
+        glUniform1f(glGetUniformLocation(shaderProgramlighting, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
+
+        for (int i = 0; i < 81; i++)
+        {
+            if (i == 0 || i == 2 || i == 4 || i == 6 || i == 8 || i == 10 || i == 12 || i == 14 || i == 16 || i == 18 || i == 20)
             {
 
                 glm::mat4 model4 = glm::mat4(1.0f);
@@ -3420,26 +3810,26 @@ int main()
                 float camX = static_cast<float>(sin(glfwGetTime()) * radius);
                 float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
                 view4 = camera.GetViewMatrix();
-                model4 = glm::rotate(model4, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
+                model4 = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
 
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-                //Camera
-                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramtexture, "model");
-                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramtexture, "view");
-                unsigned int theprojection4 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
+                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
+                unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
 
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
 
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
-                glBindVertexArray(VAO[block]);
+                glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
-            else if (block == 22 || block == 24 || block == 26 || block == 28 || block == 30 || block == 32 || block == 34 || block == 36 || block == 38 || block == 40 || block == 42)
+            else if (i == 22 || i == 24 || i == 26 || i == 28 || i == 30 || i == 32 || i == 34 || i == 36 || i == 38 || i == 40 || i == 42)
             {
-                //glUseProgram(shaderProgramlight);
+
                 glm::mat4 model4 = glm::mat4(1.0f);
                 glm::mat4 view4 = glm::mat4(1.0f);
                 glm::mat4 projection4 = glm::mat4(1.0f);
@@ -3451,20 +3841,20 @@ int main()
 
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-                //Camera
-                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramtexture, "model");
-                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramtexture, "view");
-                unsigned int theprojection4 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
+                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
+                unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
 
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
 
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
-                glBindVertexArray(VAO[block]);
+                glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
-            else if (block == 44 || block == 46 || block == 48 || block == 50 || block == 52 || block == 54 || block == 56 || block == 58 || block == 60 || block == 62 || block == 64)
+            else if (i == 44 || i == 46 || i == 48 || i == 50 || i == 52 || i == 54 || i == 56 || i == 58 || i == 60 || i == 62 || i == 64)
             {
 
                 glm::mat4 model4 = glm::mat4(1.0f);
@@ -3478,20 +3868,20 @@ int main()
 
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-                //Camera
-                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramtexture, "model");
-                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramtexture, "view");
-                unsigned int theprojection4 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
+                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
+                unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
 
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
 
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
-                glBindVertexArray(VAO[block]);
+                glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
-            else if (block == 66 || block == 68 || block == 70 || block == 72 || block == 74 || block == 76 || block == 78 || block == 80)
+            else if (i == 66 || i == 68 || i == 70 || i == 72 || i == 74 || i == 76 || i == 78 || i == 80)
             {
 
                 glm::mat4 model4 = glm::mat4(1.0f);
@@ -3505,17 +3895,17 @@ int main()
 
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-                //Camera
-                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramtexture, "model");
-                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramtexture, "view");
-                unsigned int theprojection4 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
+                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
+                unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
 
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
 
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
-                glBindVertexArray(VAO[block]);
+                glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
             else
@@ -3532,17 +3922,17 @@ int main()
 
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-                //Camera
-                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramtexture, "model");
-                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramtexture, "view");
-                unsigned int theprojection4 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+                unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
+                unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
+                unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
 
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
 
                 glBindTexture(GL_TEXTURE_2D, textureblock3);
-                glBindVertexArray(VAO[block]);
+                glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
 
@@ -3556,10 +3946,10 @@ int main()
 
         projection5 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-        //Camera
-        unsigned int modelLoc5 = glGetUniformLocation(shaderProgramtexture, "model");
-        unsigned int viewLoc5 = glGetUniformLocation(shaderProgramtexture, "view");
-        unsigned int theprojection5 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+        unsigned int modelLoc5 = glGetUniformLocation(shaderProgramlighting, "model");
+        unsigned int viewLoc5 = glGetUniformLocation(shaderProgramlighting, "view");
+        unsigned int theprojection5 = glGetUniformLocation(shaderProgramlighting, "projection");
 
         glUniformMatrix4fv(modelLoc5, 1, GL_FALSE, glm::value_ptr(model5));
         glUniformMatrix4fv(viewLoc5, 1, GL_FALSE, &view5[0][0]);
@@ -3580,10 +3970,10 @@ int main()
 
         projection6 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-        //Camera
-        unsigned int modelLoc6 = glGetUniformLocation(shaderProgramtexture, "model");
-        unsigned int viewLoc6 = glGetUniformLocation(shaderProgramtexture, "view");
-        unsigned int theprojection6 = glGetUniformLocation(shaderProgramtexture, "projection");
+
+        unsigned int modelLoc6 = glGetUniformLocation(shaderProgramlighting, "model");
+        unsigned int viewLoc6 = glGetUniformLocation(shaderProgramlighting, "view");
+        unsigned int theprojection6 = glGetUniformLocation(shaderProgramlighting, "projection");
 
         glUniformMatrix4fv(modelLoc6, 1, GL_FALSE, glm::value_ptr(model6));
         glUniformMatrix4fv(viewLoc6, 1, GL_FALSE, &view6[0][0]);
@@ -3592,8 +3982,6 @@ int main()
         glBindTexture(GL_TEXTURE_2D, textureblock1);
         glBindVertexArray(VAO[85]);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-
-
 
         //Activiting the shader and calling the methods for chess pieces
         glUseProgram(shaderProgramtexture);
@@ -3646,39 +4034,185 @@ int main()
         glBindTexture(GL_TEXTURE_2D, textureblock5);
         blackpieceknight();
 
+
+
+        //Skybox
+
+
+
         // Swap the screen buffers
         glfwSwapBuffers(window);
     }
 
 
 
+
+
+
+    // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
 
     return EXIT_SUCCESS;
 }
 
 
+void moving()
+{
+    // Camera controls
+    float cameraSpeed = static_cast<float>(2.5 * deltaTime);
 
+    if (Using_mouse) {
+        if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP])
+        {
+            camera.ProcessKeyboard(FORWARD, deltaTime);
+            cameraknighttoppiece -= cameraSpeed * cameraforward;
+            cameraknightheightpiece -= cameraSpeed * cameraforward;
+            cameraknightpiece -= cameraSpeed * cameraforward;
+            camerabishoptoppiece -= cameraSpeed * cameraforward;
+            camerabishopheightpiece -= cameraSpeed * cameraforward;
+            camerabishoppiece -= cameraSpeed * cameraforward;
+            cameraqueentoppiece -= cameraSpeed * cameraforward;
+            cameraqueenheightpiece -= cameraSpeed * cameraforward;
+            cameraqueenpiece -= cameraSpeed * cameraforward;
+            camerakingtoppiece -= cameraSpeed * cameraforward;
+            camerakingheightpiece -= cameraSpeed * cameraforward;
+            camerakingpiece -= cameraSpeed * cameraforward;
+            camerarooktoppiece -= cameraSpeed * cameraforward;
+            camerarookheightpiece -= cameraSpeed * cameraforward;
+            camerarookpiece -= cameraSpeed * cameraforward;
+            camerapawntoppiece -= cameraSpeed * cameraforward;
+            camerapawnheightpiece -= cameraSpeed * cameraforward;
+            camerapawnpiece -= cameraSpeed * cameraforward;
+        }
+
+        if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN])
+        {
+            camera.ProcessKeyboard(BACKWARD, deltaTime);
+            cameraknighttoppiece += cameraSpeed * cameraforward;
+            cameraknightheightpiece += cameraSpeed * cameraforward;
+            cameraknightpiece += cameraSpeed * cameraforward;
+            camerabishoptoppiece += cameraSpeed * cameraforward;
+            camerabishopheightpiece += cameraSpeed * cameraforward;
+            camerabishoppiece += cameraSpeed * cameraforward;
+            cameraqueentoppiece += cameraSpeed * cameraforward;
+            cameraqueenheightpiece += cameraSpeed * cameraforward;
+            cameraqueenpiece += cameraSpeed * cameraforward;
+            camerakingtoppiece += cameraSpeed * cameraforward;
+            camerakingheightpiece += cameraSpeed * cameraforward;
+            camerakingpiece += cameraSpeed * cameraforward;
+            camerarooktoppiece += cameraSpeed * cameraforward;
+            camerarookheightpiece += cameraSpeed * cameraforward;
+            camerarookpiece += cameraSpeed * cameraforward;
+            camerapawntoppiece += cameraSpeed * cameraforward;
+            camerapawnheightpiece += cameraSpeed * cameraforward;
+            camerapawnpiece += cameraSpeed * cameraforward;
+        }
+
+        if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT])
+        {
+            camera.ProcessKeyboard(LEFT, deltaTime);
+            cameraknighttoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraknightheightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraknightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerabishoptoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerabishopheightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerabishoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraqueentoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraqueenheightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraqueenpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerakingtoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerakingheightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerakingpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerarooktoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerarookheightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerarookpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerapawntoppiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerapawnheightpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerapawnpiece += glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+        }
+
+        if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT])
+        {
+            camera.ProcessKeyboard(RIGHT, deltaTime);
+            cameraknighttoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraknightheightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraknightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerabishoptoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerabishopheightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerabishoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraqueentoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraqueenheightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            cameraqueenpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerakingtoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerakingheightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerakingpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerarooktoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerarookheightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerarookpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerapawntoppiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerapawnheightpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+            camerapawnpiece -= glm::normalize(glm::cross(cameraforward, cameraUp)) * cameraSpeed;
+        }
+
+    }
+
+
+
+
+}
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-    //Pressing the Escape key to exit
-    if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action)
+    if (GLFW_KEY_ENTER == key && GLFW_PRESS == action)
     {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
 
+    if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action)
+    {
+        display_fps = display_fps ? false : true;
+    }
+
+    if (GLFW_KEY_F == key && GLFW_PRESS == action)
+    {
+        Using_mouse = Using_mouse ? false : true;
+    }
 
     if (key >= 0 && key < 1024)
     {
         if (action == GLFW_PRESS)
         {
-            keys_press[key] = true;
+            keys[key] = true;
         }
         else if (action == GLFW_RELEASE)
         {
-            keys_press[key] = false;
+            keys[key] = false;
         }
     }
 }
 
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
 
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (ActiveMouse)
+    {
+        lastXpos = xpos;
+        lastYpos = ypos;
+        ActiveMouse = false;
+    }
+
+    GLfloat xOffset = xpos - lastXpos;
+    GLfloat yOffset = lastYpos - ypos;  // Reversed since y-coordinates go from bottom to left
+
+    lastXpos = xpos;
+    lastYpos = ypos;
+
+    if (Using_mouse) {
+        camera.ProcessMouseMovement(xOffset, yOffset);
+    }
+
+
+
+}
