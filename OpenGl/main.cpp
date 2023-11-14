@@ -3388,18 +3388,6 @@ int main()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
 
-
-
-
-
-
-
-
-
-
-
-
-
     while (!glfwWindowShouldClose(window))
     {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
@@ -3414,7 +3402,7 @@ int main()
         //glClearColor specifies the color on the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        glClear(GL_COLOR_BUFFER_BIT);
 
 
         glUseProgram(shaderProgramtexture);
