@@ -3338,7 +3338,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width4, height4, nrChannels4;
-    unsigned char* data4 = stbi_load("res/images/Glaciers.jpg", &width4, &height4,
+    unsigned char* data4 = stbi_load("res/images/Wood.jpg", &width4, &height4,
         &nrChannels4, 0);
     if (data4)
     {
