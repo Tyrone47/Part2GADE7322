@@ -3246,7 +3246,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width, height, nrChannels;
-    unsigned char* data = stbi_load("res/images/pexels-gdtography-911738.jpg", &width, &height,
+    unsigned char* data = stbi_load("res/images/Wood.jpg", &width, &height,
         &nrChannels, 0);
     if (data)
     {
@@ -3269,7 +3269,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width1, height1, nrChannels1;
-    unsigned char* data1 = stbi_load("res/images/pexels-lukas-1420710.jpg", &width1, &height1,
+    unsigned char* data1 = stbi_load("res/images/tiles.jpg", &width1, &height1,
         &nrChannels1, 0);
     if (data1)
     {
@@ -3292,7 +3292,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width2, height2, nrChannels2;
-    unsigned char* data2 = stbi_load("res/images/3113406.jpg", &width2, &height2,
+    unsigned char* data2 = stbi_load("res/images/BlackTile.jpg", &width2, &height2,
         &nrChannels2, 0);
     if (data2)
     {
@@ -3338,7 +3338,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate the texture
     int width4, height4, nrChannels4;
-    unsigned char* data4 = stbi_load("res/images/do-2764539_640.jpg", &width4, &height4,
+    unsigned char* data4 = stbi_load("res/images/Glaciers.jpg", &width4, &height4,
         &nrChannels4, 0);
     if (data4)
     {
@@ -3352,7 +3352,7 @@ int main()
     }
     stbi_image_free(data4);
 
-
+    
     //chessboard 
     generate1();
     float xcoordinates = -0.35f;
@@ -3541,18 +3541,18 @@ int main()
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
     glEnableVertexAttribArray(2);
 
-
-
+    
+    
     //CALLING THE LIGHT SHADERS
     Shader lightingShaderobjects("res/shaders/lightingobjects.vs", "res/shaders/lightingobjects.frag");
     Shader cubeshaderobject("res/shaders/lightingcube.vs", "res/shaders/lightingcube.frag");
-
+    
     Shader modelShader("res/shaders/models.vs", "res/shaders/models.frag");
 
     //LOADING THE MODELS
     Model MyModels("res/models2/chessss.obj");
-
-
+   
+    
     float verticescubelight[] = {
         -0.5f, -0.5f, -0.5f,      0.0f,  0.0f,
          0.5f, -0.5f, -0.5f,     1.0f,  0.0f,
@@ -3627,22 +3627,22 @@ int main()
     glEnableVertexAttribArray(0);
 
     glUseProgram(shaderProgramlighting);
-
+    
     int diffusemap = glGetUniformLocation(shaderProgramlighting, "material.diffuse");
     glUniform1i(diffusemap, 0);
     int specularmap = glGetUniformLocation(shaderProgramlighting, "material.specular");
     glUniform1i(specularmap, 1);
+    
+    
 
-
-
-
+   
 
 
 
 
 
     ///Height map
-
+    
     while (!glfwWindowShouldClose(window))
     {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
@@ -3671,20 +3671,20 @@ int main()
             elapsed_time = 0.0f;
         }
 
-
+       
 
 
         //Generate Terrain
 
-
+       
 
         //activating the light shader for the models
         lightingShaderobjects.use();
-
+       
         glm::vec3 lightPosition(1.2f, 1.0f, 2.0f);
         glm::vec4 lightingColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-
-
+        
+        
         int ColorLocationobjectviewfirst = glGetUniformLocation(lightingShaderobjects.ID, "viewPos");
         glUniform3f(ColorLocationobjectviewfirst, 0.0f, 0.0f, 0.0f);
         int shinymaterial = glGetUniformLocation(lightingShaderobjects.ID, "material.shininess");
@@ -3719,20 +3719,20 @@ int main()
         glm::mat4 view = camera.GetViewMatrix();
         lightingShaderobjects.setMat4("projection", projection);
         lightingShaderobjects.setMat4("view", view);
-
+       
         // render the loaded model
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 1.5f, -3.0f));
-        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));
+        model = glm::translate(model, glm::vec3(0.0f, 1.5f, -3.0f)); 
+        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	
         lightingShaderobjects.setMat4("model", model);
         MyModels.Draw(lightingShaderobjects);
 
+       
 
-
-
+        
         //activating the shader for light cube positions
         cubeshaderobject.use();
-        glm::mat4 model3 = glm::mat4(1.0f);
+        glm::mat4 model3 = glm::mat4(1.0f); 
         glm::mat4 view3 = glm::mat4(1.0f);
         glm::mat4 projection3 = glm::mat4(1.0f);
         model3 = glm::rotate(model3, glm::radians(-55.0f), glm::vec3(0.5f, 0.5f, 0.5f));
@@ -3750,12 +3750,12 @@ int main()
         glUniformMatrix4fv(theprojection3, 1, GL_FALSE, &projection3[0][0]);
 
         glBindVertexArray(VAOcube);
-
+        
         for (GLuint i = 0; i < 4; i++)
         {
             model3 = glm::mat4();
             model3 = glm::translate(model3, secondcubePosition[i]);
-            model3 = glm::scale(model3, glm::vec3(0.2f));
+            model3 = glm::scale(model3, glm::vec3(0.2f)); 
             glUniformMatrix4fv(modelLoc3, 1, GL_FALSE, glm::value_ptr(model3));
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
@@ -3802,8 +3802,8 @@ int main()
         {
             if (i == 0 || i == 2 || i == 4 || i == 6 || i == 8 || i == 10 || i == 12 || i == 14 || i == 16 || i == 18 || i == 20)
             {
-
-                glm::mat4 model4 = glm::mat4(1.0f);
+                
+                glm::mat4 model4 = glm::mat4(1.0f); 
                 glm::mat4 view4 = glm::mat4(1.0f);
                 glm::mat4 projection4 = glm::mat4(1.0f);
                 float radius = 10.0f;
@@ -3811,10 +3811,10 @@ int main()
                 float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
                 view4 = camera.GetViewMatrix();
                 model4 = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+                
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+                
                 unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
                 unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
                 unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3822,15 +3822,15 @@ int main()
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
-
+               
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
                 glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
             else if (i == 22 || i == 24 || i == 26 || i == 28 || i == 30 || i == 32 || i == 34 || i == 36 || i == 38 || i == 40 || i == 42)
             {
-
-                glm::mat4 model4 = glm::mat4(1.0f);
+              
+                glm::mat4 model4 = glm::mat4(1.0f); 
                 glm::mat4 view4 = glm::mat4(1.0f);
                 glm::mat4 projection4 = glm::mat4(1.0f);
                 float radius = 10.0f;
@@ -3838,10 +3838,10 @@ int main()
                 float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
                 view4 = camera.GetViewMatrix();
                 model4 = glm::rotate(model4, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+               
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+                
                 unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
                 unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
                 unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3849,15 +3849,15 @@ int main()
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
-
+                
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
                 glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
             else if (i == 44 || i == 46 || i == 48 || i == 50 || i == 52 || i == 54 || i == 56 || i == 58 || i == 60 || i == 62 || i == 64)
             {
-
-                glm::mat4 model4 = glm::mat4(1.0f);
+                
+                glm::mat4 model4 = glm::mat4(1.0f); 
                 glm::mat4 view4 = glm::mat4(1.0f);
                 glm::mat4 projection4 = glm::mat4(1.0f);
                 float radius = 10.0f;
@@ -3865,10 +3865,10 @@ int main()
                 float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
                 view4 = camera.GetViewMatrix();
                 model4 = glm::rotate(model4, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+              
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+               
                 unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
                 unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
                 unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3876,15 +3876,15 @@ int main()
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
-
+              
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
                 glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
             else if (i == 66 || i == 68 || i == 70 || i == 72 || i == 74 || i == 76 || i == 78 || i == 80)
             {
-
-                glm::mat4 model4 = glm::mat4(1.0f);
+                
+                glm::mat4 model4 = glm::mat4(1.0f); 
                 glm::mat4 view4 = glm::mat4(1.0f);
                 glm::mat4 projection4 = glm::mat4(1.0f);
                 float radius = 10.0f;
@@ -3892,10 +3892,10 @@ int main()
                 float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
                 view4 = camera.GetViewMatrix();
                 model4 = glm::rotate(model4, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+                
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+                
                 unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
                 unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
                 unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3903,14 +3903,14 @@ int main()
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
-
+            
                 glBindTexture(GL_TEXTURE_2D, textureblock2);
                 glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
             else
             {
-
+                
                 glm::mat4 model4 = glm::mat4(1.0f);
                 glm::mat4 view4 = glm::mat4(1.0f);
                 glm::mat4 projection4 = glm::mat4(1.0f);
@@ -3919,10 +3919,10 @@ int main()
                 float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
                 view4 = camera.GetViewMatrix();
                 model4 = glm::rotate(model4, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+            
                 projection4 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+               
                 unsigned int modelLoc4 = glGetUniformLocation(shaderProgramlighting, "model");
                 unsigned int viewLoc4 = glGetUniformLocation(shaderProgramlighting, "view");
                 unsigned int theprojection4 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3930,23 +3930,23 @@ int main()
                 glUniformMatrix4fv(modelLoc4, 1, GL_FALSE, glm::value_ptr(model4));
                 glUniformMatrix4fv(viewLoc4, 1, GL_FALSE, &view4[0][0]);
                 glUniformMatrix4fv(theprojection4, 1, GL_FALSE, &projection4[0][0]);
-
+                
                 glBindTexture(GL_TEXTURE_2D, textureblock3);
                 glBindVertexArray(VAO[i]);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
 
         }
-
-        glm::mat4 model5 = glm::mat4(1.0f);
+        
+        glm::mat4 model5 = glm::mat4(1.0f); 
         glm::mat4 view5 = glm::mat4(1.0f);
         glm::mat4 projection5 = glm::mat4(1.0f);
         view5 = camera.GetViewMatrix();
         model5 = glm::rotate(model5, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+        
         projection5 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+       
         unsigned int modelLoc5 = glGetUniformLocation(shaderProgramlighting, "model");
         unsigned int viewLoc5 = glGetUniformLocation(shaderProgramlighting, "view");
         unsigned int theprojection5 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3954,23 +3954,23 @@ int main()
         glUniformMatrix4fv(modelLoc5, 1, GL_FALSE, glm::value_ptr(model5));
         glUniformMatrix4fv(viewLoc5, 1, GL_FALSE, &view5[0][0]);
         glUniformMatrix4fv(theprojection5, 1, GL_FALSE, &projection5[0][0]);
-
+        
         for (int x = 81; x < 85; x++)
         {
             glBindTexture(GL_TEXTURE_2D, textureblock1);
             glBindVertexArray(VAO[x]);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
-
-        glm::mat4 model6 = glm::mat4(1.0f);
+        
+        glm::mat4 model6 = glm::mat4(1.0f); 
         glm::mat4 view6 = glm::mat4(1.0f);
         glm::mat4 projection6 = glm::mat4(1.0f);
         view6 = camera.GetViewMatrix();
         model6 = glm::rotate(model6, glm::radians(-55.0f), glm::vec3(1.0f, 0.3f, 0.5f));
-
+        
         projection6 = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
 
-
+       
         unsigned int modelLoc6 = glGetUniformLocation(shaderProgramlighting, "model");
         unsigned int viewLoc6 = glGetUniformLocation(shaderProgramlighting, "view");
         unsigned int theprojection6 = glGetUniformLocation(shaderProgramlighting, "projection");
@@ -3978,7 +3978,7 @@ int main()
         glUniformMatrix4fv(modelLoc6, 1, GL_FALSE, glm::value_ptr(model6));
         glUniformMatrix4fv(viewLoc6, 1, GL_FALSE, &view6[0][0]);
         glUniformMatrix4fv(theprojection6, 1, GL_FALSE, &projection6[0][0]);
-
+       
         glBindTexture(GL_TEXTURE_2D, textureblock1);
         glBindVertexArray(VAO[85]);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -4037,17 +4037,17 @@ int main()
 
 
         //Skybox
-
-
+       
+        
 
         // Swap the screen buffers
         glfwSwapBuffers(window);
     }
 
+    
+    
 
-
-
-
+    
 
     // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
@@ -4060,7 +4060,7 @@ void moving()
 {
     // Camera controls
     float cameraSpeed = static_cast<float>(2.5 * deltaTime);
-
+    
     if (Using_mouse) {
         if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP])
         {
@@ -4155,10 +4155,10 @@ void moving()
         }
 
     }
-
-
-
-
+    
+       
+    
+    
 }
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
@@ -4192,27 +4192,27 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
+   
+        float xpos = static_cast<float>(xposIn);
+        float ypos = static_cast<float>(yposIn);
 
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
+        if (ActiveMouse)
+        {
+            lastXpos = xpos;
+            lastYpos = ypos;
+            ActiveMouse = false;
+        }
 
-    if (ActiveMouse)
-    {
+        GLfloat xOffset = xpos - lastXpos;
+        GLfloat yOffset = lastYpos - ypos;  // Reversed since y-coordinates go from bottom to left
+
         lastXpos = xpos;
         lastYpos = ypos;
-        ActiveMouse = false;
-    }
 
-    GLfloat xOffset = xpos - lastXpos;
-    GLfloat yOffset = lastYpos - ypos;  // Reversed since y-coordinates go from bottom to left
-
-    lastXpos = xpos;
-    lastYpos = ypos;
-
-    if (Using_mouse) {
-        camera.ProcessMouseMovement(xOffset, yOffset);
-    }
-
-
-
+        if (Using_mouse) {
+            camera.ProcessMouseMovement(xOffset, yOffset);
+        }
+    
+    
+    
 }
