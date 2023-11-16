@@ -3636,7 +3636,10 @@ int main()
     
 
    
-
+    double currentTime = 0.0;
+    double previousTime = 0.0;
+    double timeDifference;
+    unsigned int counter = 0;
 
 
 
@@ -3647,6 +3650,19 @@ int main()
     {
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
         glfwPollEvents();
+
+        currentTime = glfwGetTime();
+        timeDifference = currentTime - previousTime;
+        counter++;
+
+        if (timeDifference >= 1.0 / 30.0) {
+            std::string FPS = std::to_string((1.0 / timeDifference) * counter);
+            std::string ms = std::to_string((timeDifference / counter) * 1000); 
+            std::string windowTitle = "Chess! - " + FPS + "FPS/ " + ms + "ms";
+            glfwSetWindowTitle(window, windowTitle.c_str());
+            previousTime = currentTime; 
+            counter = 0;
+         }
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
